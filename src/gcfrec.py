@@ -10,6 +10,9 @@ import torch.nn.functional as F
 
 from common import SiLU, TransformerEncoder
 from sasrec import SASRec
+from bert4rec import BERT4Rec
+from gru4rec import GRU4Rec
+from eulerformer import EulerFormer
 from step_sample import *
 from utils import _extract_into_tensor, exponential_mapping
 
@@ -203,12 +206,47 @@ class GCFRec(nn.Module):
 
     @staticmethod
     def _build_phi(args):
+        phi_name = str(getattr(args, 'phi_model', 'sasrec')).lower()
         phi_args = copy.copy(args)
-        phi_args.model = 'pretrain'
-        phi = SASRec(phi_args)
-        ckpt_path = os.path.join('saved', 'pretrain', args.dataset, 'pretrain.pth')
+        if phi_name == 'sasrec':
+            # The archived SASRec+ checkpoint uses the pretraining-mode
+            # forward path (item embeddings without the positional table).
+            phi_args.model = 'pretrain'
+            phi = SASRec(phi_args)
+            checkpoint_dir = 'pretrain'
+        elif phi_name == 'bert4rec':
+            phi_args.model = 'bert4rec'
+            phi = BERT4Rec(phi_args)
+            checkpoint_dir = 'bert4rec'
+        elif phi_name == 'gru4rec':
+            phi_args.model = 'gru4rec'
+            phi = GRU4Rec(phi_args)
+            checkpoint_dir = 'gru4rec'
+        elif phi_name == 'eulerformer':
+            phi_args.model = 'eulerformer'
+            phi = EulerFormer(phi_args)
+            # EulerFormer creates its positional phase parameters lazily on
+            # the first forward pass. Materialise them before strict loading
+            # so the archived checkpoint's learned alpha tensors are retained.
+            phi.eval()
+            with torch.no_grad():
+                dummy = torch.zeros(1, args.max_len, dtype=torch.long)
+                phi(dummy, tgt_seq=None, train_flag=False)
+            checkpoint_dir = 'eulerformer'
+        else:
+            raise ValueError(
+                f"Unknown phi_model={phi_name!r}; expected sasrec, bert4rec, "
+                "gru4rec, or eulerformer"
+            )
+
+        ckpt_path = os.path.join('saved', checkpoint_dir, args.dataset, 'pretrain.pth')
+        if not os.path.isfile(ckpt_path):
+            raise FileNotFoundError(
+                f"Frozen encoder checkpoint not found for phi_model={phi_name!r}: "
+                f"{ckpt_path}"
+            )
         state = torch.load(ckpt_path, map_location='cpu', weights_only=False)
-        phi.load_state_dict(state, strict=False)
+        phi.load_state_dict(state, strict=True)
         for p in phi.parameters():
             p.requires_grad_(False)
         phi.eval()
@@ -220,7 +258,12 @@ class GCFRec(nn.Module):
     def encode_seq(self, item_rep, mask_seq):
         h_a = self.ag_encoder(item_rep, mask_seq)
         with torch.no_grad():
-            h_p, _ = self.phi(self._item_ids, tgt_seq=None, train_flag=False)
+            if isinstance(self.phi, BERT4Rec):
+                # Frozen-backbone ablations need position-aligned contextual
+                # states, not BERT4Rec's appended-[MASK] evaluation input.
+                h_p, _ = self.phi.encode_sequence(self._item_ids)
+            else:
+                h_p, _ = self.phi(self._item_ids, tgt_seq=None, train_flag=False)
         h = self.fusion(h_a, h_p)
         return h
 

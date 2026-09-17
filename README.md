@@ -52,6 +52,7 @@ python main.py \
   --dataset baby \
   --device cuda:0 \
   --random_seed 2025 \
+  --phi_model sasrec \
   --gcf_fusion_type gate \
   --gcf_gate_mode scalar \
   --gate_init_bias 4
@@ -61,6 +62,15 @@ For a CPU smoke test, reduce the batch size and epochs. Full paper results requi
 
 ```bash
 python main.py --model gcfrec --dataset baby --device cpu --epochs 1 --batch_size 8
+```
+
+To reproduce the frozen-backbone ablation, set `--phi_model` to `sasrec`,
+`bert4rec`, `gru4rec`, or `eulerformer`. The trainable GCFRec path and fusion
+configuration remain unchanged. For example:
+
+```bash
+python main.py --model gcfrec --dataset baby --device cuda:0 \
+  --phi_model bert4rec --random_seed 2025
 ```
 
 ## Baselines

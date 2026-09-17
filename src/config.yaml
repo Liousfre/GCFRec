@@ -51,6 +51,7 @@ pcgrad: true
 description: _ # Model brief introduction
 
 # GCFRec: gated conditioning fusion with a frozen pretrained sequence encoder.
+phi_model: sasrec  # sasrec / bert4rec / gru4rec / eulerformer
 gcf_fusion_type: gate  # sum / wsum / concat / gate / xattn
 gcf_gate_mode: scalar  # scalar (Gate-S) / token (Gate-T)
 gate_init_bias: 4.0

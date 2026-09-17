@@ -45,6 +45,7 @@ ml-100k  dfc5dfaa7950d1a85af4fd6bb168c38efc8213092a9f72563c6d75ab00cef8d0
 - Default sequence length: 50
 - Default diffusion steps: 32
 - Default GCFRec fusion: Gate-S (`gcf_gate_mode: scalar`)
+- Default frozen encoder: SASRec+ (`phi_model: sasrec`)
 - Default gate bias: 4.0
 - Paper hardware: Ubuntu server with two NVIDIA L40 GPUs (46 GB each)
 - Python: 3.10.0
@@ -65,3 +66,8 @@ python main.py --model gcfrec --dataset baby --device cpu --epochs 1 --batch_siz
 ```
 
 The compilation check verifies imports and syntax only. The one-epoch CPU command verifies that the packaged data and SASRec+ checkpoint can enter the training pipeline; it is not expected to reproduce paper accuracy.
+
+For the backbone compatibility analysis, run GCFRec with
+`--phi_model {sasrec,bert4rec,gru4rec,eulerformer}`. Each value loads the
+corresponding packaged checkpoint while leaving the trainable path and fusion
+operator unchanged.

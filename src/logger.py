@@ -126,6 +126,9 @@ def cmdline_args():
                         choices=['scalar', 'token'], help='GCFRec gate granularity')
     parser.add_argument('--gate_init_bias', type=float,
                         help='GCFRec gate bias (4.0 gives a near-backbone initialisation)')
+    parser.add_argument('--phi_model', type=str,
+                        choices=['sasrec', 'bert4rec', 'gru4rec', 'eulerformer'],
+                        help='Frozen pretrained encoder used by GCFRec')
     parser.add_argument('--bert_mask_ratio', type=float,
                         help='BERT4Rec masked-item probability')
     # 解析命令行参数

@@ -81,9 +81,8 @@ class BERT4Rec(nn.Module):
         shifted[:, -1] = self.mask_token
         return shifted
 
-    def forward(self, item_seq, tgt_seq, train_flag=True):
-        if not train_flag:
-            item_seq = self.prepare_inference_batch(item_seq)
+    def encode_sequence(self, item_seq):
+        """Encode an item sequence without applying next-item masking."""
         item_emb, position_emb = self.embedding_layer(item_seq)
         input_emb = item_emb + position_emb
         input_emb = self.LayerNorm(input_emb)
@@ -92,6 +91,11 @@ class BERT4Rec(nn.Module):
         output_seq = self.trm_encoder(input_emb, mask_seq)
         last_item = output_seq[:, -1, :]
         return output_seq, last_item
+
+    def forward(self, item_seq, tgt_seq, train_flag=True):
+        if not train_flag:
+            item_seq = self.prepare_inference_batch(item_seq)
+        return self.encode_sequence(item_seq)
 
     def calculate_loss(self, seq_output, tgt_seq):
         index = tgt_seq > 0
